@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Penyimpanan File Aman - Pro Edition</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>🌌 Aplikasi Penyimpanan File Aman</h2>
+        <p class="subtitle">Tugas Keamanan Informasi - AES, DES, RC4</p>
+        
+        <!-- Bagian Login -->
+        <div class="card" id="login-section">
+            <h3>Login / Register</h3>
+            <input type="text" id="username" placeholder="Username / Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="handleLogin()">Masuk / Daftar</button>
+            <p id="status-text" style="font-size: 13px; margin-top: 10px; color: #93c5fd;"></p>
+        </div>
+
+        <!-- Bagian Utama Setelah Login -->
+        <div id="upload-section" style="display: none;">
+            
+            <!-- Kotak 1: Upload & Enkripsi -->
+            <div class="card">
+                <h3>📁 Upload & Enkripsi File</h3>
+                <input type="file" id="userFile" style="padding: 5px; color: #fff;">
+                
+                <label for="algorithm" style="text-align: left; font-size: 14px; font-weight: bold; color: #e0f2fe;">Pilih Algoritma Kriptografi:</label>
+                <select id="algorithm">
+                    <option value="aes">AES (Advanced Encryption Standard - CBC)</option>
+                    <option value="des">DES (Data Encryption Standard - CBC)</option>
+                    <option value="rc4">RC4 (Rivest Cipher 4)</option>
+                </select>
+
+                <button onclick="handleUpload()">Upload & Enkripsi</button>
+                <p id="upload-status" style="font-size: 13px; margin-top: 5px; color: #4ade80;"></p>
+            </div>
+
+            <!-- Kotak 2: Dekripsi File Kiriman Luar -->
+            <div class="card">
+                <h3>🔓 Dekripsi File Kiriman Luar (.enc)</h3>
+                <p style="font-size: 12px; color: #94a3b8; text-align: left; margin: 0;">Punya file terenkripsi dari teman? Upload di sini untuk membuka kuncinya!</p>
+                
+                <input type="file" id="externalFile" style="padding: 5px; color: #fff;">
+                
+                <label for="extAlgorithm" style="text-align: left; font-size: 14px; font-weight: bold; color: #e0f2fe;">Algoritma Asal:</label>
+                <select id="extAlgorithm">
+                    <option value="aes">AES</option>
+                    <option value="des">DES</option>
+                    <option value="rc4">RC4</option>
+                </select>
+
+                <input type="text" id="secretKeyInput" placeholder="Masukkan Kunci Rahasia (Contoh: kunci-rahasia-kampus)">
+                
+                <button onclick="handleExternalDecrypt()" style="background: linear-gradient(135deg, #16a34a, #15803d);">Dekripsi & Download File</button>
+                <p id="ext-status" style="font-size: 13px; margin-top: 5px; color: #4ade80;"></p>
+            </div>
+
+            <!-- Kotak 3: Daftar File & Running Time -->
+            <div class="card">
+                <h3>📋 Daftar File Terenkripsi & Analisis Waktu</h3>
+                <div style="max-height: 280px; overflow-y: auto; text-align: left; padding-right: 5px;">
+                    <ul id="file-list" style="list-style-type: none; padding: 0; margin: 0;">
+                        <p style="font-size: 13px; color: #94a3b8;">Memuat daftar file...</p>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let loggedInUser = '';
+
+        async function handleLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const statusText = document.getElementById('status-text');
+
+            if (!username || !password) {
+                alert('Username dan password tidak boleh kosong ya!');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                statusText.innerText = data.message;
+
+                if (response.ok) {
+                    loggedInUser = username;
+                    setTimeout(() => {
+                        document.getElementById('login-section').style.display = 'none';
+                        document.getElementById('upload-section').style.display = 'block';
+                        loadFiles();
+                    }, 1000);
+                }
+            } catch (err) {
+                statusText.innerText = 'Terjadi kesalahan koneksi ke server.';
+            }
+        }
+
+        async function handleUpload() {
+            const fileInput = document.getElementById('userFile');
+            const algorithm = document.getElementById('algorithm').value;
+            const uploadStatus = document.getElementById('upload-status');
+
+            if (fileInput.files.length === 0) {
+                alert('Pilih file terlebih dahulu ya!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('username', loggedInUser);
+            formData.append('algorithm', algorithm);
+
+            uploadStatus.innerText = 'Sedang mengenkripsi file dan mengukur waktu...';
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                uploadStatus.innerText = data.message;
+                fileInput.value = '';
+                loadFiles();
+            } catch (err) {
+                uploadStatus.innerText = 'Gagal mengunggah dan mengenkripsi file.';
+            }
+        }
+
+        async function handleExternalDecrypt() {
+            const fileInput = document.getElementById('externalFile');
+            const algorithm = document.getElementById('extAlgorithm').value;
+            const secretKey = document.getElementById('secretKeyInput').value;
+            const extStatus = document.getElementById('ext-status');
+
+            if (fileInput.files.length === 0 || !secretKey) {
+                alert('Pilih file terenkripsi dan masukkan kunci rahasianya ya!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('algorithm', algorithm);
+            formData.append('secretKey', secretKey);
+
+            extStatus.innerText = 'Memproses dekripsi file luar...';
+
+            try {
+                const response = await fetch('/api/decrypt-external', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    extStatus.innerText = errData.message || 'Gagal dekripsi. Kunci atau algoritma salah!';
+                    return;
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileInput.files[0].name.replace('.enc', '');
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                extStatus.innerText = 'Berhasil mendekripsi dan mengunduh file! 🔓';
+            } catch (err) {
+                extStatus.innerText = 'Terjadi kesalahan pada server saat dekripsi.';
+            }
+        }
+
+        async function loadFiles() {
+            try {
+                const response = await fetch(`/api/files?username=${loggedInUser}`);
+                const files = await response.json();
+                const fileList = document.getElementById('file-list');
+                
+                if (files.length === 0) {
+                    fileList.innerHTML = '<p style="font-size: 13px; color: #94a3b8;">Belum ada file yang di-upload untuk akun ini.</p>';
+                    return;
+                }
+
+                fileList.innerHTML = files.map(file => `
+                    <li style="background: rgba(15, 23, 42, 0.6); margin-bottom: 12px; padding: 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.2);">
+                        <div style="margin-bottom: 6px;">
+                            <strong style="color: #f8fafc; font-size: 13px; word-break: break-all;">${file.filename}</strong><br>
+                            <span style="font-size: 11px; color: #38bdf8;">Algoritma: ${file.algorithm}</span> | 
+                            <span style="font-size: 11px; color: #4ade80;">⏱️ Waktu Eksekusi: ${file.execution_time} ms</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                            <a href="/api/download-enc/${file.id}" target="_blank" style="background: #334155; color: #e2e8f0; padding: 5px 10px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: bold; border: 1px solid #475569;">📥 Download Enkripsi (.enc)</a>
+                            <a href="/api/decrypt/${file.id}" target="_blank" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: white; padding: 5px 10px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: bold; box-shadow: 0 2px 8px rgba(2,132,199,0.4);">🔓 Download & Dekripsi</a>
+                        </div>
+                    </li>
+                `).join('');
+            } catch (err) {
+                console.error('Gagal memuat daftar file');
+            }
+        }
+    </script>
+</body>
+</html>
