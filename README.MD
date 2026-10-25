@@ -1,4 +1,4 @@
-# 🌌 Secure File Storage Web Application
+# 🛡️ CipherDock - Secure File Storage Web Application
 
 > **Tugas Mata Kuliah Keamanan Informasi**  
 > Implementasi Algoritma Kriptografi (AES, DES, RC4) dan Analisis Performa Kinerja
@@ -6,11 +6,11 @@
 ---
 
 ## 📖 Tentang Proyek
-Aplikasi web penyimpanan file aman berbasis **Node.js** yang dirancang untuk memenuhi standar privasi data (seperti GDPR / UU PDP) dengan memastikan seluruh file privat pengguna (dokumen, gambar ID, PDF) terenkripsi secara aman sebelum disimpan ke dalam server.
+Aplikasi web penyimpanan file aman berbasis **Node.js** yang dirancang untuk memenuhi standar privasi data (seperti GDPR / UU PDP) dengan memastikan seluruh file privat pengguna (dokumen, gambar ID, PDF) terenkripsi secara aman sebelum disimpan ke dalam server. Dilengkapi dengan antarmuka modern dua kolom ala *CipherDock* yang mendukung *Light/Dark Mode*.
 
 ---
 
-## ✨ Fitur Utama
+## Fitur Utama
 1. **Autentikasi Pengguna:** Sistem Login & Register dengan penyimpanan data aman menggunakan SQLite.
 2. **Multi-Algoritma Kriptografi (Non-ECB Mode):**
    - **AES-256-CBC** (dengan *Initialization Vector* / IV acak)
@@ -25,15 +25,15 @@ Aplikasi web penyimpanan file aman berbasis **Node.js** yang dirancang untuk mem
 
 ---
 
-## 🛠️ Tech Stack
-* **Backend:** Node.js, Express.js
-* **Database:** SQLite3
-* **Kriptografi:** Node.js `crypto` module & `crypto-js`
-* **Frontend:** HTML5, CSS3 (Galaxy Night Theme), JavaScript
+## Tech Stack
+- **Backend:** Node.js, Express.js
+- **Database:** SQLite3
+- **Kriptografi:** Node.js `crypto` module & `crypto-js`
+- **Frontend:** HTML5, CSS3 (CipherDock UI Theme with Light/Dark Toggle), JavaScript
 
 ---
 
-## 🚀 Cara Menjalankan Program (Local)
+## Cara Menjalankan Program (Local)
 
 1. Clone atau download repository ini ke komputer Anda.
 2. Buka terminal pada folder utama project, lalu instal dependensi yang diperlukan:
