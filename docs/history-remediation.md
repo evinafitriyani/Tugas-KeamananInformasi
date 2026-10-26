@@ -165,7 +165,18 @@ trufflehog git file://. --only-verified
 
 Tinjau setiap temuan. False positive harus didokumentasikan; temuan secret nyata harus diperbaiki sebelum push. Jangan menjalankan scanner dengan opsi yang mengunggah data sensitif ke layanan pihak ketiga tanpa persetujuan.
 
-### 7.4 Periksa ukuran dan object
+### 7.4 Pemeriksaan `git grep` pada seluruh revisi
+
+Gunakan pola literal secret yang diketahui dari kanal aman, atau pola generik berikut sebagai pemeriksaan tambahan:
+
+```bash
+git grep -I -n -E 'CAMPUSVAULT_MASTER_KEY[[:space:]]*=[[:space:]]*[A-Za-z0-9+/]{32,}' \
+  $(git rev-list --all) -- ':!.env.example' || true
+```
+
+Perintah ini tidak boleh menemukan nilai secret yang tersimpan langsung di file tracked. Untuk pola literal secret lama, jalankan `git grep` dari shell privat dan jangan simpan nilainya di riwayat shell bersama. Temuan pada dokumentasi yang hanya menyebut nama variabel bukan secret; periksa konteksnya secara manual.
+
+### 7.5 Periksa ukuran dan object
 
 ```bash
 git count-objects -vH
