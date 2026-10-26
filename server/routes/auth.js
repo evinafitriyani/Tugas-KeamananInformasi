@@ -3,7 +3,7 @@
 const express = require('express');
 const { promisify } = require('node:util');
 const { asyncHandler } = require('../utils/async-handler');
-const { createUser, findUserByUsername, findUserById, verifyPassword } = require('../services/users');
+const { createUser, findUserById, authenticateUser } = require('../services/users');
 const { requireCsrf, newToken } = require('../middleware/csrf');
 
 function cookieOptions(config, includeMaxAge = true) {
@@ -54,8 +54,8 @@ function createAuthRouter({ db, config, authLimiter }) {
 
   router.post('/login', authLimiter, requireCsrf, asyncHandler(async (req, res) => {
     const { username, password } = req.body || {};
-    const user = await findUserByUsername(db, username);
-    if (!user || !verifyPassword(password, user.password_hash)) {
+    const user = await authenticateUser(db, username, password);
+    if (!user) {
       console.info('auth.login.failure');
       res.status(401).json({
         error: { code: 'AUTH_INVALID', message: 'Username atau password salah.' }

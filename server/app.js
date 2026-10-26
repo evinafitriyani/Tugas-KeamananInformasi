@@ -53,11 +53,15 @@ function createApp({ db, config }) {
     res.json({ status: 'ok', app: 'CampusVault' });
   });
 
+  app.use('/api', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
   app.use('/api', apiLimiter);
   app.use('/api', ensureCsrfToken);
   app.use('/api/auth', createAuthRouter({ db, config, authLimiter }));
   app.use('/api/files', createFilesRouter({ db, config }));
-  app.use('/api/benchmark', createBenchmarkRouter({ config }));
+  app.use('/api/benchmark', createBenchmarkRouter({ db, config }));
 
   app.use(express.static(config.publicDir, {
     index: 'index.html',

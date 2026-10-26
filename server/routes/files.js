@@ -3,7 +3,8 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('node:path');
-const { requireAuth } = require('../middleware/auth');
+const { createRequireAuth } = require('../middleware/auth');
+const { requireCsrf } = require('../middleware/csrf');
 const { asyncHandler } = require('../utils/async-handler');
 const { validateUpload, sanitizeFilename } = require('../utils/files');
 const { ValidationError } = require('../errors');
@@ -43,7 +44,8 @@ function createFilesRouter({ db, config }) {
     }
   });
 
-  router.use(requireAuth);
+  router.use(createRequireAuth(db));
+  router.use(requireCsrf);
 
   router.get('/', asyncHandler(async (req, res) => {
     const files = await listFiles(db, req.user.id);
@@ -67,6 +69,7 @@ function createFilesRouter({ db, config }) {
       algorithm,
       masterKey: config.masterKey
     });
+    req.file.buffer = null;
 
     console.info('file.upload.success', { algorithm, size: file.original_size_bytes });
     res.status(201).json({ message: 'File berhasil diunggah dan dienkripsi.', file });
@@ -75,6 +78,7 @@ function createFilesRouter({ db, config }) {
   router.get('/:id/download', asyncHandler(async (req, res) => {
     const row = await getOwnedFile(db, req.user.id, req.params.id);
     const plaintext = await decryptFile(config.storageDir, row, config.masterKey);
+    console.info('file.download.success', { algorithm: row.algorithm });
     res.setHeader('Content-Type', row.mime_type);
     res.setHeader('Content-Disposition', dispositionHeader(row.original_filename));
     res.setHeader('Cache-Control', 'no-store');
@@ -85,6 +89,7 @@ function createFilesRouter({ db, config }) {
     const row = await getOwnedFile(db, req.user.id, req.params.id);
     const envelope = await getCiphertext(config.storageDir, row);
     const downloadName = `${path.basename(row.original_filename, path.extname(row.original_filename))}.enc.json`;
+    console.info('file.ciphertext.success', { algorithm: row.algorithm });
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Content-Disposition', dispositionHeader(downloadName));
     res.setHeader('Cache-Control', 'no-store');

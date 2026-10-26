@@ -11,22 +11,28 @@ const { createApp } = require('../server/app');
 
 const TEST_PASSWORD = 'correct horse battery staple';
 
-async function createTestContext(overrides = {}) {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'campusvault-test-'));
-  const config = loadConfig({
+function testEnvironment(directory, overrides = {}) {
+  return {
     NODE_ENV: 'test',
-    CAMPUSVAULT_MASTER_KEY: Buffer.alloc(48, 7).toString('base64'),
-    SESSION_SECRET: 'test-session-secret-that-is-long-enough-1234567890',
-    DATABASE_PATH: path.join(dir, 'database.sqlite'),
-    STORAGE_DIR: path.join(dir, 'storage'),
+    CAMPUSVAULT_MASTER_KEY: crypto.randomBytes(48).toString('base64'),
+    SESSION_SECRET: crypto.randomBytes(48).toString('base64'),
+    DATABASE_PATH: path.join(directory, 'database.sqlite'),
+    STORAGE_DIR: path.join(directory, 'storage'),
+    BENCHMARK_RESULTS_DIR: path.join(directory, 'benchmark-results'),
     SESSION_TTL_MS: '3600000',
     MAX_UPLOAD_BYTES: '26214400',
     AUTH_RATE_LIMIT_MAX: '1000',
     API_RATE_LIMIT_MAX: '10000',
     RATE_LIMIT_WINDOW_MS: '60000',
     ...overrides
-  });
+  };
+}
+
+async function createTestContext(overrides = {}) {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'campusvault-test-'));
+  const config = loadConfig(testEnvironment(dir, overrides));
   await fs.mkdir(config.storageDir, { recursive: true });
+  await fs.mkdir(config.benchmarkResultsDir, { recursive: true });
   const db = await openDatabase(config.databasePath);
   await migrate(db, config.migrationsDir);
   const app = createApp({ db, config });
@@ -75,6 +81,21 @@ async function upload(agent, csrf, file, algorithm = 'AES') {
     .attach('file', file.buffer, { filename: file.filename, contentType: file.mime });
 }
 
+function sessionSid(response, cookieName = 'campusvault.sid') {
+  const cookies = response.headers['set-cookie'] || [];
+  for (const cookie of cookies) {
+    const match = cookie.match(new RegExp(`^${cookieName}=([^;]*)`));
+    if (!match) continue;
+    let sid = decodeURIComponent(match[1]);
+    // express-session signs cookies as s:<sid>.<signature>.
+    if (sid.startsWith('s:')) sid = sid.slice(2);
+    const separator = sid.lastIndexOf('.');
+    if (separator !== -1) sid = sid.slice(0, separator);
+    return sid;
+  }
+  return null;
+}
+
 function csvFixture() {
   return {
     filename: 'dummy.csv',
@@ -102,6 +123,17 @@ function pngFixture() {
   };
 }
 
+function jpgFixture() {
+  return {
+    filename: 'dummy.jpg',
+    mime: 'image/jpeg',
+    buffer: Buffer.from([
+      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46,
+      0x49, 0x46, 0x00, 0x01, 0x00, 0xff, 0xd9
+    ])
+  };
+}
+
 function docxFixture() {
   return {
     filename: 'dummy.docx',
@@ -109,6 +141,28 @@ function docxFixture() {
     buffer: Buffer.concat([
       Buffer.from([0x50, 0x4b, 0x03, 0x04]),
       Buffer.from('synthetic-docx-placeholder', 'utf8')
+    ])
+  };
+}
+
+function xlsxFixture() {
+  return {
+    filename: 'dummy.xlsx',
+    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: Buffer.concat([
+      Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+      Buffer.from('synthetic-xlsx-placeholder', 'utf8')
+    ])
+  };
+}
+
+function pptxFixture() {
+  return {
+    filename: 'dummy.pptx',
+    mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    buffer: Buffer.concat([
+      Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+      Buffer.from('synthetic-pptx-placeholder', 'utf8')
     ])
   };
 }
@@ -126,21 +180,38 @@ function mp4Fixture() {
   };
 }
 
+function webmFixture() {
+  return {
+    filename: 'dummy.webm',
+    mime: 'video/webm',
+    buffer: Buffer.concat([
+      Buffer.from([0x1a, 0x45, 0xdf, 0xa3]),
+      Buffer.from('synthetic-webm', 'utf8')
+    ])
+  };
+}
+
 function randomBuffer(size = 128) {
   return crypto.randomBytes(size);
 }
 
 module.exports = {
   TEST_PASSWORD,
+  testEnvironment,
   createTestContext,
   getCsrf,
   register,
   login,
   upload,
+  sessionSid,
   csvFixture,
   pdfFixture,
   pngFixture,
+  jpgFixture,
   docxFixture,
+  xlsxFixture,
+  pptxFixture,
   mp4Fixture,
+  webmFixture,
   randomBuffer
 };

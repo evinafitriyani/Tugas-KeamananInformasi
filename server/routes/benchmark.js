@@ -3,14 +3,14 @@
 const express = require('express');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { requireAuth } = require('../middleware/auth');
+const { createRequireAuth } = require('../middleware/auth');
 const { asyncHandler } = require('../utils/async-handler');
 
-function createBenchmarkRouter({ config }) {
+function createBenchmarkRouter({ db, config }) {
   const router = express.Router();
   const resultPath = path.join(config.benchmarkResultsDir, 'latest.json');
 
-  router.get('/latest', requireAuth, asyncHandler(async (req, res) => {
+  router.get('/latest', createRequireAuth(db), asyncHandler(async (req, res) => {
     let raw;
     try {
       raw = await fs.readFile(resultPath, 'utf8');

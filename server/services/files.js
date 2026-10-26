@@ -5,7 +5,8 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { run, get, all, withTransaction } = require('../db');
 const { encrypt, verifyAndDecrypt, ALGORITHMS, ENVELOPE_VERSION } = require('../crypto');
-const { NotFoundError } = require('../errors');
+const { NotFoundError, ValidationError } = require('../errors');
+const { sanitizeFilename } = require('../utils/files');
 
 function modeFor(algorithm) {
   const config = ALGORITHMS[algorithm];
@@ -36,7 +37,14 @@ function publicMetadata(row) {
 }
 
 async function createFile({ db, storageDir, ownerId, buffer, originalFilename, mimeType, algorithm, masterKey }) {
+  if (!Number.isSafeInteger(ownerId) || ownerId <= 0) {
+    throw new ValidationError('Pemilik file tidak valid.');
+  }
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    throw new ValidationError('File kosong tidak didukung.');
+  }
   const mode = modeFor(algorithm);
+  const safeOriginalFilename = sanitizeFilename(originalFilename);
   const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
   const envelope = encrypt(buffer, algorithm, masterKey);
   const storageFilename = `${crypto.randomBytes(24).toString('hex')}.json`;
@@ -45,7 +53,7 @@ async function createFile({ db, storageDir, ownerId, buffer, originalFilename, m
   const temporaryPath = storagePath(storageDir, temporaryName);
   const createdAt = new Date().toISOString();
 
-  await fs.mkdir(storageDir, { recursive: true });
+  await fs.mkdir(storageDir, { recursive: true, mode: 0o700 });
   await fs.writeFile(temporaryPath, envelope, { flag: 'wx', mode: 0o600 });
 
   let result;
@@ -59,7 +67,7 @@ async function createFile({ db, storageDir, ownerId, buffer, originalFilename, m
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         ownerId,
-        originalFilename,
+        safeOriginalFilename,
         storageFilename,
         mimeType,
         buffer.length,
@@ -83,7 +91,7 @@ async function createFile({ db, storageDir, ownerId, buffer, originalFilename, m
 
   return {
     id: result.lastID,
-    original_filename: originalFilename,
+    original_filename: safeOriginalFilename,
     mime_type: mimeType,
     original_size_bytes: buffer.length,
     encrypted_size_bytes: envelope.length,
@@ -147,12 +155,46 @@ async function getCiphertext(storageDir, row) {
 async function deleteFile(db, storageDir, ownerId, fileId) {
   const row = await getOwnedFile(db, ownerId, fileId);
   const filename = storagePath(storageDir, row.storage_filename);
+
+  // Remove the authorization-relevant metadata first. If the physical unlink
+  // then fails, restore the row so the owner can retry instead of leaving
+  // metadata that points at an already-missing file.
+  await run(db, 'DELETE FROM files WHERE id = ? AND owner_id = ?', [row.id, ownerId]);
   try {
     await fs.unlink(filename);
   } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
+    if (error.code === 'ENOENT') return;
+    try {
+      await run(
+        db,
+        `INSERT INTO files (
+          id, owner_id, original_filename, storage_filename, mime_type,
+          original_size_bytes, encrypted_size_bytes, algorithm, mode,
+          envelope_version, original_sha256, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          row.id,
+          row.owner_id,
+          row.original_filename,
+          row.storage_filename,
+          row.mime_type,
+          row.original_size_bytes,
+          row.encrypted_size_bytes,
+          row.algorithm,
+          row.mode,
+          row.envelope_version,
+          row.original_sha256,
+          row.created_at
+        ]
+      );
+    } catch (restoreError) {
+      console.error('file.delete.rollback_failed', {
+        name: restoreError.name,
+        message: restoreError.message
+      });
+    }
+    throw error;
   }
-  await run(db, 'DELETE FROM files WHERE id = ? AND owner_id = ?', [row.id, ownerId]);
 }
 
 module.exports = {
