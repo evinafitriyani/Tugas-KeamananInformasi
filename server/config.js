@@ -3,6 +3,7 @@
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 function required(env, name) {
   const value = env[name];
@@ -18,6 +19,9 @@ function parseBase64Secret(value, name, minimumBytes) {
     throw new Error(`${name} harus berupa Base64 yang valid`);
   }
   const buffer = Buffer.from(raw, 'base64');
+  if (buffer.toString('base64') !== raw) {
+    throw new Error(`${name} harus berupa Base64 kanonis`);
+  }
   if (buffer.length < minimumBytes) {
     throw new Error(`${name} harus minimal ${minimumBytes} byte setelah decode Base64`);
   }
@@ -25,8 +29,9 @@ function parseBase64Secret(value, name, minimumBytes) {
 }
 
 function positiveInt(value, fallback) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function loadConfig(env = process.env) {
@@ -47,17 +52,21 @@ function loadConfig(env = process.env) {
     nodeEnv,
     isProduction: nodeEnv === 'production',
     isTest: nodeEnv === 'test',
+    host: env.HOST || '127.0.0.1',
     port: positiveInt(env.PORT, 3000),
     databasePath: path.resolve(ROOT, env.DATABASE_PATH || 'server/data/database.sqlite'),
     storageDir: path.resolve(ROOT, env.STORAGE_DIR || 'server/data/storage'),
     publicDir: path.join(ROOT, 'public'),
     migrationsDir: path.join(__dirname, 'migrations'),
     benchmarkFixturesDir: path.join(ROOT, 'benchmark', 'fixtures'),
-    benchmarkResultsDir: path.join(ROOT, 'benchmark', 'results'),
+    benchmarkResultsDir: path.resolve(ROOT, env.BENCHMARK_RESULTS_DIR || 'benchmark/results'),
     masterKey,
     sessionSecret,
     sessionTtlMs: positiveInt(env.SESSION_TTL_MS, 2 * 60 * 60 * 1000),
-    maxUploadBytes: positiveInt(env.MAX_UPLOAD_BYTES, 25 * 1024 * 1024),
+    maxUploadBytes: Math.min(
+      positiveInt(env.MAX_UPLOAD_BYTES, MAX_UPLOAD_BYTES),
+      MAX_UPLOAD_BYTES
+    ),
     authRateLimitMax: positiveInt(env.AUTH_RATE_LIMIT_MAX, 20),
     apiRateLimitMax: positiveInt(env.API_RATE_LIMIT_MAX, 300),
     rateLimitWindowMs: positiveInt(env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
@@ -65,4 +74,4 @@ function loadConfig(env = process.env) {
   };
 }
 
-module.exports = { loadConfig };
+module.exports = { loadConfig, MAX_UPLOAD_BYTES };

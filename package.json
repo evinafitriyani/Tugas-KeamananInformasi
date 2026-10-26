@@ -11,9 +11,11 @@
     "start": "node server/server.js",
     "dev": "node --watch server/server.js",
     "migrate": "node server/migrate.js",
-    "test": "node --test --test-concurrency=1 test/",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "check": "npm run lint && npm test",
     "lint": "eslint .",
-    "benchmark": "node benchmark/run.js"
+    "benchmark": "node benchmark/run.js",
+    "audit": "npm audit --omit=dev"
   },
   "dependencies": {
     "des.js": "^1.1.0",

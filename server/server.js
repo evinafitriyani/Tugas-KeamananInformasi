@@ -18,9 +18,8 @@ async function main() {
   try {
     await migrate(db, config.migrationsDir);
     const app = createApp({ db, config });
-    const host = process.env.HOST || '127.0.0.1';
-    const server = app.listen(config.port, host, () => {
-      console.info(`CampusVault berjalan di http://${host}:${config.port}`);
+    const server = app.listen(config.port, config.host, () => {
+      console.info(`CampusVault berjalan di http://${config.host}:${config.port}`);
     });
 
     const shutdown = async (signal) => {
