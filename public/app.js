@@ -106,6 +106,22 @@
     elements.userName.textContent = state.user ? state.user.username : '';
     elements.authView.hidden = Boolean(state.user);
     elements.appView.hidden = !state.user;
+    if (!state.user) {
+      state.files = [];
+      state.benchmarkLoaded = false;
+      elements.fileList.replaceChildren();
+      elements.filesMessage.textContent = '';
+      elements.filesEmpty.hidden = true;
+    }
+  }
+
+  function handleSessionExpired(error) {
+    if (!error || error.status !== 401) return false;
+    state.user = null;
+    setAuthenticated(null);
+    showLoginTab();
+    setMessage(elements.authMessage, 'Sesi berakhir. Silakan masuk kembali.', 'error');
+    return true;
   }
 
   function showLoginTab() {
@@ -241,7 +257,9 @@
       elements.algorithmNote.textContent = algorithmDescription(elements.algorithmSelect.value);
       await loadFiles();
     } catch (error) {
-      setMessage(elements.uploadMessage, error.message, 'error');
+      if (!handleSessionExpired(error)) {
+        setMessage(elements.uploadMessage, error.message, 'error');
+      }
     } finally {
       setBusy(elements.uploadButton, false, 'Enkripsi & simpan');
     }
@@ -263,7 +281,9 @@
       state.files = data.files || [];
       renderFiles();
     } catch (error) {
-      setMessage(elements.filesMessage, error.message, 'error');
+      if (!handleSessionExpired(error)) {
+        setMessage(elements.filesMessage, error.message, 'error');
+      }
     }
   }
 
@@ -305,7 +325,9 @@
       setMessage(elements.filesMessage, 'File dihapus.', 'success');
       await loadFiles();
     } catch (error) {
-      setMessage(elements.filesMessage, error.message, 'error');
+      if (!handleSessionExpired(error)) {
+        setMessage(elements.filesMessage, error.message, 'error');
+      }
     }
   }
 
@@ -314,9 +336,15 @@
       const report = await api('/api/benchmark/latest');
       renderBenchmark(report);
     } catch (error) {
+      if (handleSessionExpired(error)) return;
       if (error.status === 404) {
         elements.benchmarkContent.replaceChildren(
-          element('p', 'empty-state', 'Belum ada hasil benchmark. Jalankan npm run benchmark.')
+          element('p', 'empty-state', 'Belum ada hasil benchmark. Jalankan npm run benchmark.'),
+          element(
+            'p',
+            'benchmark-note',
+            'Setelah benchmark dijalankan, muat ulang halaman ini untuk melihat hasil nyata dari mesin lokal.'
+          )
         );
         return;
       }
@@ -326,40 +354,88 @@
     }
   }
 
+  function formatThroughput(value) {
+    return Number.isFinite(value) ? `${value.toFixed(2)} MiB/s` : '-';
+  }
+
+  function formatOverhead(row) {
+    if (!Number.isFinite(row.average_envelope_bytes)) return '-';
+    const bytes = Number.isFinite(row.average_overhead_bytes)
+      ? `${row.average_overhead_bytes.toFixed(0)} B`
+      : '-';
+    const percent = Number.isFinite(row.overhead_percent)
+      ? `${row.overhead_percent.toFixed(2)}%`
+      : '-';
+    return `${formatBytes(row.average_envelope_bytes)} (+${bytes}, ${percent})`;
+  }
+
   function renderBenchmark(report) {
     const aggregates = Array.isArray(report.aggregates) ? report.aggregates : [];
     elements.benchmarkContent.replaceChildren();
     if (aggregates.length === 0) {
-      elements.benchmarkContent.append(element('p', 'empty-state', 'Tidak ada hasil benchmark.'));
+      elements.benchmarkContent.append(
+        element('p', 'empty-state', 'Belum ada hasil benchmark. Jalankan npm run benchmark.')
+      );
       return;
     }
 
     const table = element('table', 'benchmark-table');
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    for (const label of ['Fixture', 'Algoritma', 'Enkripsi', 'Dekripsi', 'Total', 'Throughput']) {
+    for (const label of [
+      'Fixture',
+      'Algoritma',
+      'Enkripsi',
+      'Dekripsi',
+      'Enc MiB/s',
+      'Dec MiB/s',
+      'Envelope',
+      'Overhead',
+      'Kebenaran'
+    ]) {
       headerRow.append(element('th', null, label));
     }
     thead.append(headerRow);
     const tbody = document.createElement('tbody');
     for (const row of aggregates) {
       const tr = document.createElement('tr');
+      const correctness = row.round_trip_correct
+        ? `${row.successful_iterations}/${row.measured_iterations} benar`
+        : `${row.successful_iterations}/${row.measured_iterations} benar (${row.failed_iterations} gagal)`;
       tr.append(
         element('td', null, row.fixture_id),
-        element('td', null, row.algorithm),
+        element('td', null, `${row.algorithm}-${row.mode}`),
         element('td', null, formatMs(row.encrypt_ms && row.encrypt_ms.mean_ms)),
         element('td', null, formatMs(row.decrypt_ms && row.decrypt_ms.mean_ms)),
-        element('td', null, formatMs(row.total_ms && row.total_ms.mean_ms)),
-        element('td', null, `${Number(row.throughput_mb_s).toFixed(2)} MiB/s`)
+        element('td', null, formatThroughput(row.encrypt_throughput_mib_s)),
+        element('td', null, formatThroughput(row.decrypt_throughput_mib_s)),
+        element('td', null, formatBytes(row.average_envelope_bytes)),
+        element('td', null, formatOverhead(row)),
+        element('td', row.round_trip_correct ? 'benchmark-ok' : 'benchmark-fail', correctness)
       );
       tbody.append(tr);
     }
     table.append(thead, tbody);
     elements.benchmarkContent.append(table);
-    if (report.generated_at) {
-      elements.benchmarkContent.append(
-        element('p', 'benchmark-note', `Dihasilkan: ${formatDate(report.generated_at)}`)
+
+    const environment = report.environment || {};
+    const methodology = report.methodology || {};
+    const notes = [];
+    if (report.generated_at) notes.push(`Dihasilkan: ${formatDate(report.generated_at)}`);
+    if (environment.node_version || environment.cpu_model) {
+      notes.push(
+        `Mesin: Node ${environment.node_version || '-'} · ${environment.cpu_model || '-'} · ` +
+        `${environment.platform || '-'}/${environment.arch || '-'}`
       );
+    }
+    if (methodology.warmup_iterations || methodology.measured_iterations) {
+      notes.push(
+        `Metode: ${methodology.warmup_iterations || 0} warm-up + ` +
+        `${methodology.measured_iterations || 0} iterasi terukur per kombinasi fixture-algoritma.`
+      );
+    }
+    if (notes.length > 0) {
+      elements.benchmarkContent.append(element('p', 'benchmark-note', notes.join(' ')));
     }
   }
 

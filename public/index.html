@@ -28,12 +28,13 @@
         <p class="eyebrow">Lokal · Terenkripsi · Owner-only</p>
         <h1 id="auth-heading">Simpan dokumen sensitif organisasi dengan lebih aman.</h1>
         <p class="lede">
-          CampusVault mengenkripsi setiap file sebelum disimpan. Hanya akun pemilik
-          yang dapat melihat daftar, mengunduh, atau menghapus file tersebut.
+          CampusVault adalah aplikasi penyimpanan privat untuk dokumen organisasi kampus.
+          Isi file dienkripsi sebelum disimpan. AES digunakan sebagai pilihan utama,
+          sedangkan DES dan RC4 tersedia hanya untuk perbandingan akademik.
         </p>
         <div class="notice notice-warning">
-          <strong>Demo lokal.</strong> Aplikasi ini tidak menggunakan data nyata.
-          Jangan mengunggah dokumen pribadi sungguhan ke lingkungan demonstrasi.
+          <strong>Gunakan hanya data dummy untuk demonstrasi.</strong>
+          Jangan mengunggah dokumen pribadi, identitas, atau data anggota yang nyata.
         </div>
         <ul class="feature-list">
           <li>AES-256-CBC sebagai pilihan default</li>
@@ -41,6 +42,11 @@
           <li>Envelope JSON berversi dan kunci turunan HKDF</li>
           <li>Batas unggah 25 MiB dan validasi tipe file</li>
         </ul>
+        <div class="notice notice-info">
+          <strong>Batas prototipe.</strong> DES dan RC4 hanya untuk eksperimen akademik
+          dan tidak aman untuk penggunaan nyata. CampusVault adalah prototipe akademik
+          lokal, bukan layanan produksi atau klaim kepatuhan hukum.
+        </div>
       </div>
 
       <div class="auth-card panel">
@@ -117,6 +123,11 @@
             <p id="algorithm-note" class="field-help">
               AES-256-CBC dengan IV acak dan HMAC-SHA-256 adalah pilihan yang disarankan.
             </p>
+            <div id="cipher-warning" class="notice notice-warning">
+              <strong>Peringatan algoritma lama.</strong> DES-CBC dan RC4 hanya tersedia
+              untuk eksperimen akademik dan perbandingan; keduanya tidak aman untuk data
+              nyata atau penggunaan produksi.
+            </div>
 
             <button id="upload-button" class="button button-primary" type="submit">
               Enkripsi &amp; simpan
@@ -133,6 +144,11 @@
           <p class="field-help">
             Hasil nyata dari mesin yang menjalankan <code>npm run benchmark</code>.
             Waktu hanya mencakup pipeline kriptografi, bukan HTTP, database, atau filesystem.
+            Setiap kombinasi fixture-algoritma memakai satu warm-up dan sepuluh iterasi terukur.
+          </p>
+          <p class="field-help">
+            Nilai berlaku hanya untuk mesin, runtime, dan fixture yang tercatat. AES adalah
+            rekomendasi prototipe; hasil DES atau RC4 tidak membuat algoritma tersebut aman.
           </p>
           <div id="benchmark-content" class="benchmark-content">
             <p class="empty-state">Memuat hasil benchmark…</p>

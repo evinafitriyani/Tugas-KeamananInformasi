@@ -452,6 +452,16 @@ button:focus-visible {
   font-size: 0.76rem;
 }
 
+.benchmark-ok {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.benchmark-fail {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 code {
   padding: 0.1rem 0.3rem;
   border-radius: 0.25rem;
