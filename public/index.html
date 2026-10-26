@@ -1,351 +1,171 @@
-<!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<!doctype html>
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CipherDock - Secure File Storage</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CampusVault: penyimpanan dokumen lokal terenkripsi untuk organisasi kampus.">
+  <title>CampusVault — Secure Document Storage</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-
-    <!-- Tombol Ganti Tema -->
-    <button class="theme-toggle" onclick="toggleTheme()">
-        <span id="theme-icon">☀️</span> <span id="theme-text">Light Mode</span>
-    </button>
-
-    <!-- HALAMAN LOGIN / REGISTER (Dua Kolom) -->
-    <div class="main-wrapper" id="auth-wrapper">
-        <!-- Kolom Kiri: Branding -->
-        <div class="left-banner">
-            <div>
-                <div style="font-weight: bold; font-size: 18px; display: flex; align-items: center; gap: 8px;">
-                    🛡️ CipherDock
-                </div>
-                <h1>Your Files,<br>Your Privacy.</h1>
-                <p>Simpan, kelola, dan lindungi file penting Anda dengan teknologi enkripsi modern standar tinggi.</p>
-            </div>
-            
-            <div class="feature-list">
-                <div class="feature-item">
-                    <span>🔒</span>
-                    <div>
-                        <strong style="font-size: 14px;">Enkripsi Multi-Algoritma</strong>
-                        <p style="margin: 2px 0 0 0; font-size: 12px;">Didukung AES-256, DES, dan RC4.</p>
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <span>⚡</span>
-                    <div>
-                        <strong style="font-size: 14px;">Analisis Performa</strong>
-                        <p style="margin: 2px 0 0 0; font-size: 12px;">Pengukuran running time secara presisi (ms).</p>
-                    </div>
-                </div>
-            </div>
-            <div style="font-size: 11px; color: #8696a0;">Tugas Keamanan Informasi ITS</div>
-        </div>
-
-        <!-- Kolom Kanan: Form Autentikasi -->
-        <div class="right-form-container">
-            <div class="tab-header">
-                <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Masuk</button>
-                <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Daftar</button>
-            </div>
-
-            <!-- Form Login -->
-            <div id="form-login-content">
-                <h3 style="margin-top: 0; margin-bottom: 5px;">Selamat Datang</h3>
-                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 25px;">Masuk ke akun Anda untuk melanjutkan</p>
-                
-                <div class="form-group">
-                    <label>Username / Email</label>
-                    <input type="text" id="login-user" placeholder="Masukkan username">
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="login-pass" placeholder="••••••••">
-                </div>
-                <button class="btn-submit" onclick="handleLogin()">Masuk →</button>
-                <p id="login-status" style="font-size: 13px; margin-top: 15px; color: #00a884; text-align: center;"></p>
-            </div>
-
-            <!-- Form Register -->
-            <div id="form-register-content" style="display: none;">
-                <h3 style="margin-top: 0; margin-bottom: 5px;">Buat Akun Baru</h3>
-                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 25px;">Daftar akun baru untuk mulai menyimpan file</p>
-                
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="reg-user" placeholder="Pilih username">
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="reg-pass" placeholder="••••••••">
-                </div>
-                <button class="btn-submit" onclick="handleRegister()">Daftar Akun →</button>
-                <p id="reg-status" style="font-size: 13px; margin-top: 15px; color: #00a884; text-align: center;"></p>
-            </div>
-        </div>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="CampusVault beranda">
+      <span class="brand-mark" aria-hidden="true">CV</span>
+      <span>
+        <strong>CampusVault</strong>
+        <small>Secure document storage</small>
+      </span>
+    </a>
+    <div id="user-area" class="user-area" hidden>
+      <span id="user-name" class="user-name"></span>
+      <button id="logout-button" class="button button-quiet" type="button">Keluar</button>
     </div>
+  </header>
 
-    <!-- HALAMAN DASHBOARD (Setelah Login) -->
-    <div class="dashboard-container" id="dashboard-wrapper" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
-            <div>
-                <h2 style="margin: 0; color: var(--accent-color);">🛡️ CipherDock Dashboard</h2>
-                <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-secondary);">Halo, <span id="user-display" style="font-weight: bold; color: var(--text-primary);"></span>!</p>
-            </div>
-            <button onclick="location.reload()" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 16px; border-radius: 8px; cursor: pointer;">Keluar</button>
+  <main class="shell">
+    <section id="auth-view" class="auth-layout" aria-labelledby="auth-heading">
+      <div class="hero">
+        <p class="eyebrow">Lokal · Terenkripsi · Owner-only</p>
+        <h1 id="auth-heading">Simpan dokumen sensitif organisasi dengan lebih aman.</h1>
+        <p class="lede">
+          CampusVault mengenkripsi setiap file sebelum disimpan. Hanya akun pemilik
+          yang dapat melihat daftar, mengunduh, atau menghapus file tersebut.
+        </p>
+        <div class="notice notice-warning">
+          <strong>Demo lokal.</strong> Aplikasi ini tidak menggunakan data nyata.
+          Jangan mengunggah dokumen pribadi sungguhan ke lingkungan demonstrasi.
+        </div>
+        <ul class="feature-list">
+          <li>AES-256-CBC sebagai pilihan default</li>
+          <li>Integritas ciphertext dengan HMAC-SHA-256</li>
+          <li>Envelope JSON berversi dan kunci turunan HKDF</li>
+          <li>Batas unggah 25 MiB dan validasi tipe file</li>
+        </ul>
+      </div>
+
+      <div class="auth-card panel">
+        <div class="tabs" role="tablist" aria-label="Autentikasi">
+          <button id="tab-login" class="tab is-active" type="button" role="tab" aria-selected="true">
+            Masuk
+          </button>
+          <button id="tab-register" class="tab" type="button" role="tab" aria-selected="false">
+            Buat akun
+          </button>
         </div>
 
-        <div class="dashboard-grid">
-            <!-- Kotak Upload -->
-            <div class="dash-card">
-                <h3>📁 Upload & Enkripsi File</h3>
-                <div class="form-group">
-                    <label>Pilih File</label>
-                    <input type="file" id="userFile">
-                </div>
-                <div class="form-group">
-                    <label>Algoritma Kriptografi</label>
-                    <select id="algorithm">
-                        <option value="aes">AES-256-CBC</option>
-                        <option value="des">DES-CBC</option>
-                        <option value="rc4">RC4 Stream Cipher</option>
-                    </select>
-                </div>
-                <button class="btn-submit" onclick="handleUpload()">Enkripsi & Simpan</button>
-                <p id="upload-status" style="font-size: 12px; margin-top: 10px; color: #00a884;"></p>
-            </div>
+        <form id="login-form" class="form" novalidate>
+          <h2>Masuk ke vault</h2>
+          <label for="login-username">Username</label>
+          <input id="login-username" name="username" type="text" autocomplete="username"
+                 minlength="3" maxlength="32" required placeholder="contoh: anggota_ukm">
+          <label for="login-password">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password"
+                 minlength="10" maxlength="128" required>
+          <button class="button button-primary" type="submit">Masuk</button>
+        </form>
 
-            <!-- Kotak Dekripsi Eksternal -->
-            <div class="dash-card">
-                <h3>🔓 Dekripsi File Luar (.enc)</h3>
-                <div class="form-group">
-                    <label>File .enc</label>
-                    <input type="file" id="externalFile">
-                </div>
-                <div class="form-group">
-                    <label>Algoritma Asal</label>
-                    <select id="extAlgorithm">
-                        <option value="aes">AES</option>
-                        <option value="des">DES</option>
-                        <option value="rc4">RC4</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Kunci Rahasia</label>
-                    <input type="text" id="secretKeyInput" placeholder="Masukkan secret key">
-                </div>
-                <button class="btn-submit" onclick="handleExternalDecrypt()" style="background: #10b981;">Dekripsi & Download</button>
-                <p id="ext-status" style="font-size: 12px; margin-top: 10px; color: #00a884;"></p>
-            </div>
+        <form id="register-form" class="form" novalidate hidden>
+          <h2>Buat akun owner</h2>
+          <label for="register-username">Username</label>
+          <input id="register-username" name="username" type="text" autocomplete="username"
+                 minlength="3" maxlength="32" required placeholder="3-32 karakter">
+          <p class="field-help">Huruf, angka, titik, garis bawah, atau tanda hubung.</p>
+          <label for="register-password">Password</label>
+          <input id="register-password" name="password" type="password" autocomplete="new-password"
+                 minlength="10" maxlength="128" required>
+          <p class="field-help">Minimal 10 karakter. Gunakan password unik untuk demo ini.</p>
+          <label for="register-password-confirm">Ulangi password</label>
+          <input id="register-password-confirm" name="password_confirm" type="password"
+                 autocomplete="new-password" minlength="10" maxlength="128" required>
+          <button class="button button-primary" type="submit">Buat akun</button>
+        </form>
+
+        <p id="auth-message" class="message" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section id="app-view" class="app-view" aria-labelledby="dashboard-heading" hidden>
+      <div class="dashboard-heading">
+        <div>
+          <p class="eyebrow">Dashboard pemilik</p>
+          <h1 id="dashboard-heading">Vault dokumen Anda</h1>
+          <p class="lede">File dienkripsi di server lokal. Hanya sesi Anda yang dapat mengaksesnya.</p>
         </div>
+      </div>
 
-        <!-- Daftar File -->
-        <div class="dash-card" style="margin-top: 20px;">
-            <h3>📋 Daftar File Terenkripsi & Analisis Waktu (Running Time)</h3>
-            <div style="max-height: 220px; overflow-y: auto; margin-top: 10px;">
-                <ul id="file-list" style="list-style: none; padding: 0; margin: 0;">
-                    <p style="font-size: 13px; color: var(--text-secondary);">Memuat daftar file...</p>
-                </ul>
-            </div>
+      <div class="dashboard-grid">
+        <section class="panel upload-panel" aria-labelledby="upload-heading">
+          <div class="panel-heading">
+            <h2 id="upload-heading">Unggah file</h2>
+            <span class="badge">Maks. 25 MiB</span>
+          </div>
+          <form id="upload-form" class="form">
+            <label for="file-input">Pilih file</label>
+            <input id="file-input" name="file" type="file" required
+                   accept=".csv,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.pptx,.mp4,.webm">
+            <p class="field-help">
+              CSV, PDF, JPG/JPEG, PNG, DOCX, XLSX, PPTX, MP4, atau WebM.
+              Ekstensi, MIME type, dan signature file harus cocok.
+            </p>
+
+            <label for="algorithm-select">Algoritma enkripsi</label>
+            <select id="algorithm-select" name="algorithm">
+              <option value="AES" selected>AES-256-CBC (disarankan)</option>
+              <option value="DES">DES-CBC (akademik, tidak aman)</option>
+              <option value="RC4">RC4 (akademik, tidak aman)</option>
+            </select>
+            <p id="algorithm-note" class="field-help">
+              AES-256-CBC dengan IV acak dan HMAC-SHA-256 adalah pilihan yang disarankan.
+            </p>
+
+            <button id="upload-button" class="button button-primary" type="submit">
+              Enkripsi &amp; simpan
+            </button>
+            <p id="upload-message" class="message" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="panel benchmark-panel" aria-labelledby="benchmark-heading">
+          <div class="panel-heading">
+            <h2 id="benchmark-heading">Benchmark crypto</h2>
+            <button id="benchmark-refresh" class="button button-quiet" type="button">Muat ulang</button>
+          </div>
+          <p class="field-help">
+            Hasil nyata dari mesin yang menjalankan <code>npm run benchmark</code>.
+            Waktu hanya mencakup pipeline kriptografi, bukan HTTP, database, atau filesystem.
+          </p>
+          <div id="benchmark-content" class="benchmark-content">
+            <p class="empty-state">Memuat hasil benchmark…</p>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel files-panel" aria-labelledby="files-heading">
+        <div class="panel-heading">
+          <h2 id="files-heading">File milik Anda</h2>
+          <button id="files-refresh" class="button button-quiet" type="button">Muat ulang</button>
         </div>
-    </div>
+        <p id="files-message" class="message" role="status" aria-live="polite"></p>
+        <ul id="file-list" class="file-list" aria-live="polite"></ul>
+        <p id="files-empty" class="empty-state" hidden>Belum ada file. Unggah file pertama Anda.</p>
+      </section>
 
-    <script>
-        // Toggle Tema
-        function toggleTheme() {
-            const html = document.documentElement;
-            const icon = document.getElementById('theme-icon');
-            const text = document.getElementById('theme-text');
-            if (html.getAttribute('data-theme') === 'dark') {
-                html.setAttribute('data-theme', 'light');
-                icon.textContent = '🌙';
-                text.textContent = 'Dark Mode';
-            } else {
-                html.setAttribute('data-theme', 'dark');
-                icon.textContent = '☀️';
-                text.textContent = 'Light Mode';
-            }
-        }
+      <div class="notice notice-info">
+        <strong>Catatan keamanan.</strong> DES dan RC4 hanya untuk pembelajaran dan perbandingan
+        akademik; keduanya tidak boleh digunakan untuk data nyata. Jangan gunakan aplikasi demo
+        ini sebagai pengganti layanan penyimpanan produksi.
+      </div>
+    </section>
+  </main>
 
-        // Switch Tab Login / Register
-        function switchTab(type) {
-            const loginBtn = document.getElementById('tab-login');
-            const regBtn = document.getElementById('tab-register');
-            const loginContent = document.getElementById('form-login-content');
-            const regContent = document.getElementById('form-register-content');
+  <footer class="site-footer">
+    <p>CampusVault · demo lokal · tidak untuk data pribadi nyata</p>
+    <p><a href="/api/health">Status API</a></p>
+  </footer>
 
-            if (type === 'login') {
-                loginBtn.classList.add('active');
-                regBtn.classList.remove('active');
-                loginContent.style.display = 'block';
-                regContent.style.display = 'none';
-            } else {
-                regBtn.classList.add('active');
-                loginBtn.classList.remove('active');
-                regContent.style.display = 'block';
-                loginContent.style.display = 'none';
-            }
-        }
-
-        let loggedInUser = '';
-
-        async function handleLogin() {
-            const username = document.getElementById('login-user').value;
-            const password = document.getElementById('login-pass').value;
-            const statusText = document.getElementById('login-status');
-
-            if (!username || !password) {
-                alert('Username dan password harus diisi!');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await response.json();
-                statusText.innerText = data.message;
-
-                if (response.ok) {
-                    loggedInUser = username;
-                    setTimeout(() => {
-                        document.getElementById('auth-wrapper').style.display = 'none';
-                        document.getElementById('dashboard-wrapper').style.display = 'block';
-                        document.getElementById('user-display').innerText = username;
-                        loadFiles();
-                    }, 800);
-                }
-            } catch (err) {
-                statusText.innerText = 'Gagal terhubung ke server.';
-            }
-        }
-
-        async function handleRegister() {
-            const username = document.getElementById('reg-user').value;
-            const password = document.getElementById('reg-pass').value;
-            const statusText = document.getElementById('reg-status');
-
-            if (!username || !password) {
-                alert('Username dan password harus diisi!');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await response.json();
-                statusText.innerText = data.message;
-                if (response.ok) {
-                    setTimeout(() => switchTab('login'), 1000);
-                }
-            } catch (err) {
-                statusText.innerText = 'Gagal terhubung ke server.';
-            }
-        }
-
-        async function handleUpload() {
-            const fileInput = document.getElementById('userFile');
-            const algorithm = document.getElementById('algorithm').value;
-            const uploadStatus = document.getElementById('upload-status');
-
-            if (fileInput.files.length === 0) {
-                alert('Pilih file dulu ya!');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('username', loggedInUser);
-            formData.append('algorithm', algorithm);
-
-            uploadStatus.innerText = 'Mengenkripsi file...';
-
-            try {
-                const response = await fetch('/api/upload', { method: 'POST', body: formData });
-                const data = await response.json();
-                uploadStatus.innerText = data.message;
-                fileInput.value = '';
-                loadFiles();
-            } catch (err) {
-                uploadStatus.innerText = 'Gagal upload file.';
-            }
-        }
-
-        async function handleExternalDecrypt() {
-            const fileInput = document.getElementById('externalFile');
-            const algorithm = document.getElementById('extAlgorithm').value;
-            const secretKey = document.getElementById('secretKeyInput').value;
-            const extStatus = document.getElementById('ext-status');
-
-            if (fileInput.files.length === 0 || !secretKey) {
-                alert('Pilih file .enc dan masukkan kunci rahasia!');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('algorithm', algorithm);
-            formData.append('secretKey', secretKey);
-
-            extStatus.innerText = 'Mendekripsi...';
-
-            try {
-                const response = await fetch('/api/decrypt-external', { method: 'POST', body: formData });
-                if (!response.ok) {
-                    const errData = await response.json();
-                    extStatus.innerText = errData.message || 'Gagal dekripsi!';
-                    return;
-                }
-
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileInput.files[0].name.replace('.enc', '');
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                extStatus.innerText = 'Berhasil didownload! 🔓';
-            } catch (err) {
-                extStatus.innerText = 'Gagal dekripsi.';
-            }
-        }
-
-        async function loadFiles() {
-            try {
-                const response = await fetch(`/api/files?username=${loggedInUser}`);
-                const files = await response.json();
-                const fileList = document.getElementById('file-list');
-                
-                if (files.length === 0) {
-                    fileList.innerHTML = '<p style="font-size: 13px; color: var(--text-secondary);">Belum ada file.</p>';
-                    return;
-                }
-
-                fileList.innerHTML = files.map(file => `
-                    <li style="background: var(--card-bg); margin-bottom: 10px; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                        <div>
-                            <strong style="font-size: 13px;">${file.filename}</strong><br>
-                            <span style="font-size: 11px; color: var(--accent-color);">Algoritma: ${file.algorithm}</span> | 
-                            <span style="font-size: 11px; color: #10b981;">⏱️ ${file.execution_time} ms</span>
-                        </div>
-                        <div style="display: flex; gap: 6px;">
-                            <a href="/api/download-enc/${file.id}" target="_blank" style="background: var(--border-color); color: var(--text-primary); padding: 5px 10px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: bold;">📥 .enc</a>
-                            <a href="/api/decrypt/${file.id}" target="_blank" style="background: var(--accent-color); color: white; padding: 5px 10px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: bold;">🔓 Dekripsi</a>
-                        </div>
-                    </li>
-                `).join('');
-            } catch (err) {
-                console.error('Gagal memuat file');
-            }
-        }
-    </script>
+  <noscript>
+    <p class="noscript">CampusVault membutuhkan JavaScript untuk antarmuka. Aktifkan JavaScript di browser.</p>
+  </noscript>
+  <script src="/app.js" defer></script>
 </body>
 </html>

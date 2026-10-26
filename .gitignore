@@ -1,0 +1,26 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+coverage/
+node_modules/.cache/
+
+# Runtime database and encrypted/plaintext storage
+server/data/
+server/database.sqlite
+server/enc_storage/
+server/uploads/
+
+# Generated benchmark output (latest.json/latest.csv are produced by `npm run benchmark`)
+benchmark/results/*
+!benchmark/results/.gitkeep
+
+# Local logs and editor noise
+*.log
+logs/
+.DS_Store
+.vscode/
+.idea/

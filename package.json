@@ -1,15 +1,33 @@
 {
-  "name": "secure-file-app",
+  "name": "campusvault",
   "version": "1.0.0",
-  "description": "Aplikasi Web Enkripsi File",
+  "description": "CampusVault adalah demo lokal penyimpanan dokumen terenkripsi untuk organisasi kampus.",
+  "private": true,
   "main": "server/server.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "start": "node server/server.js"
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "migrate": "node server/migrate.js",
+    "test": "node --test --test-concurrency=1 test/",
+    "lint": "eslint .",
+    "benchmark": "node benchmark/run.js"
   },
   "dependencies": {
-    "crypto-js": "^4.2.0",
-    "express": "^4.19.2",
-    "multer": "^2.4.0",
-    "sqlite3": "^5.1.7"
+    "des.js": "^1.1.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "multer": "^2.5.0",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "globals": "^16.5.0",
+    "supertest": "^7.3.1"
   }
 }

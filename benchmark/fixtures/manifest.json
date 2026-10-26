@@ -1,0 +1,44 @@
+{
+  "fixtures": [
+    {
+      "id": "personal-data",
+      "name": "Data Personal Dummy (CSV)",
+      "file": "personal-data.csv",
+      "mime_type": "text/csv",
+      "category": "personal",
+      "description": "Dataset anggota dummy untuk skenario data personal.",
+      "bytes": 8704,
+      "sha256": "a94101af8827e742bdbbd4aea9fbea7a4548485523b55eb35c3ae74c89a46725"
+    },
+    {
+      "id": "identity-scan",
+      "name": "Pemindaian Identitas Dummy (PNG)",
+      "file": "identity-scan.png",
+      "mime_type": "image/png",
+      "category": "identity",
+      "description": "Gambar KTP/identitas sintetis tanpa data nyata.",
+      "bytes": 3170,
+      "sha256": "5b022bc5ff703b3d46be8f2372f5305a931b755eeed32a8496b137d628a547cc"
+    },
+    {
+      "id": "office-document",
+      "name": "Dokumen Office Dummy (DOCX)",
+      "file": "office-document.docx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "category": "office",
+      "description": "Dokumen proposal sintetis.",
+      "bytes": 980,
+      "sha256": "ccbfb571c76a333e7ef21b686156ce83679f91804deda0245bb27ba4d84629ff"
+    },
+    {
+      "id": "video-sample",
+      "name": "Video Pendek Dummy (MP4)",
+      "file": "video-sample.mp4",
+      "mime_type": "video/mp4",
+      "category": "video",
+      "description": "Video warna sintetis berdurasi satu detik.",
+      "bytes": 1883,
+      "sha256": "1fae6b55f2150fc152fb722142cae9de4badea88e899b2c05472f9c92dd59857"
+    }
+  ]
+}
