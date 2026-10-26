@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://campusvault.local/schemas/benchmark-report-v1.json",
+  "title": "CampusVault benchmark report",
+  "description": "Struktur benchmark/results/latest.json yang dihasilkan oleh npm run benchmark. Tidak ada nilai pengukuran yang ditetapkan di schema.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "application",
+    "environment",
+    "methodology",
+    "fixtures",
+    "results",
+    "aggregates",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "application": { "const": "CampusVault" },
+    "environment": {
+      "type": "object",
+      "required": [
+        "node_version",
+        "platform",
+        "arch",
+        "cpu_model",
+        "cpu_count",
+        "total_memory_bytes"
+      ]
+    },
+    "methodology": {
+      "type": "object",
+      "required": [
+        "warmup_iterations",
+        "measured_iterations",
+        "algorithms",
+        "fixture_count",
+        "includes_kdf",
+        "includes_encryption_and_mac",
+        "includes_mac_verification_and_decryption",
+        "includes_sha256_correctness_check",
+        "excluded"
+      ],
+      "properties": {
+        "warmup_iterations": { "const": 1 },
+        "measured_iterations": { "const": 10 },
+        "algorithms": { "const": ["AES", "DES", "RC4"] },
+        "fixture_count": { "const": 4 },
+        "includes_kdf": { "const": true },
+        "includes_encryption_and_mac": { "const": true },
+        "includes_mac_verification_and_decryption": { "const": true },
+        "includes_sha256_correctness_check": { "const": true },
+        "excluded": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "file", "mime_type", "category", "bytes", "sha256"],
+        "properties": {
+          "bytes": { "type": "integer", "minimum": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fixture_id",
+          "fixture_name",
+          "fixture_category",
+          "mime_type",
+          "input_bytes",
+          "input_sha256",
+          "algorithm",
+          "mode",
+          "phase",
+          "iteration",
+          "encrypt_ms",
+          "decrypt_ms",
+          "total_ms",
+          "encryption_throughput_mib_s",
+          "decryption_throughput_mib_s",
+          "envelope_bytes",
+          "overhead_bytes",
+          "overhead_percent",
+          "round_trip_success",
+          "sha256_match",
+          "runtime_version",
+          "os_platform",
+          "cpu_model",
+          "timestamp"
+        ],
+        "properties": {
+          "algorithm": { "enum": ["AES", "DES", "RC4"] },
+          "mode": { "enum": ["CBC", "STREAM"] },
+          "phase": { "enum": ["warmup", "measured"] },
+          "iteration": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "round_trip_success": { "type": "boolean" },
+          "sha256_match": { "type": "boolean" }
+        }
+      }
+    },
+    "aggregates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fixture_id",
+          "fixture_category",
+          "mime_type",
+          "algorithm",
+          "mode",
+          "measured_iterations",
+          "successful_iterations",
+          "failed_iterations",
+          "round_trip_correct",
+          "encrypt_ms",
+          "decrypt_ms",
+          "total_ms",
+          "encrypt_throughput_mib_s",
+          "decrypt_throughput_mib_s",
+          "average_envelope_bytes",
+          "average_overhead_bytes",
+          "overhead_percent"
+        ],
+        "properties": {
+          "measured_iterations": { "type": "integer", "minimum": 1 },
+          "round_trip_correct": { "type": "boolean" },
+          "encrypt_ms": { "$ref": "#/$defs/statistics" },
+          "decrypt_ms": { "$ref": "#/$defs/statistics" },
+          "total_ms": { "$ref": "#/$defs/statistics" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_warmup_rows",
+        "total_measured_rows",
+        "measured_iterations_per_combination",
+        "successful_measured_iterations",
+        "failed_measured_iterations",
+        "all_round_trips_correct"
+      ]
+    }
+  },
+  "$defs": {
+    "statistics": {
+      "type": "object",
+      "required": ["n", "mean_ms", "median_ms", "min_ms", "max_ms", "stddev_ms"],
+      "properties": {
+        "n": { "type": "integer", "minimum": 0 },
+        "mean_ms": { "type": "number", "minimum": 0 },
+        "median_ms": { "type": "number", "minimum": 0 },
+        "min_ms": { "type": "number", "minimum": 0 },
+        "max_ms": { "type": "number", "minimum": 0 },
+        "stddev_ms": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

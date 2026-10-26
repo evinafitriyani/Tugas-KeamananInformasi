@@ -1,5 +1,7 @@
 'use strict';
 
+const MIB = 1024 * 1024;
+
 function mean(values) {
   if (values.length === 0) return 0;
   return values.reduce((total, value) => total + value, 0) / values.length;
@@ -33,6 +35,18 @@ function applyStats(values) {
   };
 }
 
+function throughputMibPerSecond(bytes, milliseconds) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return null;
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return null;
+  return (bytes / MIB) / (milliseconds / 1000);
+}
+
+function round(value, decimals = 6) {
+  if (!Number.isFinite(value)) return null;
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
 function summarize(results) {
   const groups = new Map();
   for (const row of results) {
@@ -41,46 +55,67 @@ function summarize(results) {
       groups.set(key, {
         fixture_id: row.fixture_id,
         fixture_name: row.fixture_name,
+        fixture_category: row.fixture_category,
+        mime_type: row.mime_type,
         input_bytes: row.input_bytes,
+        input_sha256: row.input_sha256,
         algorithm: row.algorithm,
+        mode: row.mode,
         measured_iterations: 0,
         successful_iterations: 0,
-        encryption: [],
-        decryption: [],
-        total: [],
-        envelope_sizes: []
+        successful_rows: []
       });
     }
     const group = groups.get(key);
     group.measured_iterations += 1;
-    group.envelope_sizes.push(row.envelope_bytes);
-    if (row.success) group.successful_iterations += 1;
-    group.encryption.push(row.encrypt_ms);
-    group.decryption.push(row.decrypt_ms);
-    group.total.push(row.total_ms);
+    const successful = row.round_trip_success !== undefined
+      ? row.round_trip_success === true
+      : row.success === true;
+    if (successful) {
+      group.successful_iterations += 1;
+      group.successful_rows.push(row);
+    }
   }
 
   return [...groups.values()].map((group) => {
-    const averageTotal = mean(group.total);
-    const averageEnvelope = mean(group.envelope_sizes);
+    const rows = group.successful_rows;
+    const encryptTimes = rows.map((row) => row.encrypt_ms);
+    const decryptTimes = rows.map((row) => row.decrypt_ms);
+    const totalTimes = rows.map((row) => row.total_ms);
+    const envelopeSizes = rows.map((row) => row.envelope_bytes);
+    const overheadBytes = rows.map((row) => row.overhead_bytes);
+
+    const encryptStats = applyStats(encryptTimes);
+    const decryptStats = applyStats(decryptTimes);
+    const totalStats = applyStats(totalTimes);
+    const averageEnvelope = mean(envelopeSizes);
+    const averageOverhead = mean(overheadBytes);
+    const failed = group.measured_iterations - group.successful_iterations;
+
     return {
       fixture_id: group.fixture_id,
       fixture_name: group.fixture_name,
+      fixture_category: group.fixture_category,
+      mime_type: group.mime_type,
       input_bytes: group.input_bytes,
+      input_sha256: group.input_sha256,
       algorithm: group.algorithm,
+      mode: group.mode,
       measured_iterations: group.measured_iterations,
       successful_iterations: group.successful_iterations,
-      failed_iterations: group.measured_iterations - group.successful_iterations,
-      encrypt_ms: applyStats(group.encryption),
-      decrypt_ms: applyStats(group.decryption),
-      total_ms: applyStats(group.total),
-      average_envelope_bytes: averageEnvelope,
+      failed_iterations: failed,
+      round_trip_correct: failed === 0 && group.successful_iterations > 0,
+      encrypt_ms: encryptStats,
+      decrypt_ms: decryptStats,
+      total_ms: totalStats,
+      encrypt_throughput_mib_s: round(throughputMibPerSecond(group.input_bytes, encryptStats.mean_ms)),
+      decrypt_throughput_mib_s: round(throughputMibPerSecond(group.input_bytes, decryptStats.mean_ms)),
+      total_throughput_mib_s: round(throughputMibPerSecond(group.input_bytes, totalStats.mean_ms)),
+      average_envelope_bytes: round(averageEnvelope),
+      average_overhead_bytes: round(averageOverhead),
       overhead_percent: group.input_bytes > 0
-        ? ((averageEnvelope - group.input_bytes) / group.input_bytes) * 100
-        : 0,
-      throughput_mb_s: averageTotal > 0
-        ? (group.input_bytes / (1024 * 1024)) / (averageTotal / 1000)
-        : 0
+        ? round((averageOverhead / group.input_bytes) * 100)
+        : null
     };
   });
 }
@@ -90,49 +125,78 @@ function csvEscape(value) {
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+const CSV_COLUMNS = [
+  'fixture_id',
+  'fixture_name',
+  'fixture_category',
+  'mime_type',
+  'input_bytes',
+  'input_sha256',
+  'algorithm',
+  'mode',
+  'measured_iterations',
+  'successful_iterations',
+  'failed_iterations',
+  'round_trip_correct',
+  'encrypt_mean_ms',
+  'encrypt_median_ms',
+  'encrypt_min_ms',
+  'encrypt_max_ms',
+  'encrypt_sample_stddev_ms',
+  'decrypt_mean_ms',
+  'decrypt_median_ms',
+  'decrypt_min_ms',
+  'decrypt_max_ms',
+  'decrypt_sample_stddev_ms',
+  'total_mean_ms',
+  'total_median_ms',
+  'total_min_ms',
+  'total_max_ms',
+  'total_sample_stddev_ms',
+  'encrypt_throughput_mib_s',
+  'decrypt_throughput_mib_s',
+  'total_throughput_mib_s',
+  'average_envelope_bytes',
+  'average_overhead_bytes',
+  'overhead_percent'
+];
+
 function toCsv(aggregates) {
-  const columns = [
-    'fixture_id',
-    'fixture_name',
-    'algorithm',
-    'input_bytes',
-    'measured_iterations',
-    'successful_iterations',
-    'failed_iterations',
-    'encrypt_mean_ms',
-    'encrypt_median_ms',
-    'encrypt_stddev_ms',
-    'decrypt_mean_ms',
-    'decrypt_median_ms',
-    'decrypt_stddev_ms',
-    'total_mean_ms',
-    'total_median_ms',
-    'total_stddev_ms',
-    'throughput_mb_s',
-    'average_envelope_bytes',
-    'overhead_percent'
-  ];
-  const lines = [columns.join(',')];
+  const lines = [CSV_COLUMNS.join(',')];
   for (const row of aggregates) {
     lines.push([
       row.fixture_id,
       row.fixture_name,
-      row.algorithm,
+      row.fixture_category,
+      row.mime_type,
       row.input_bytes,
+      row.input_sha256,
+      row.algorithm,
+      row.mode,
       row.measured_iterations,
       row.successful_iterations,
       row.failed_iterations,
+      row.round_trip_correct,
       row.encrypt_ms.mean_ms,
       row.encrypt_ms.median_ms,
+      row.encrypt_ms.min_ms,
+      row.encrypt_ms.max_ms,
       row.encrypt_ms.stddev_ms,
       row.decrypt_ms.mean_ms,
       row.decrypt_ms.median_ms,
+      row.decrypt_ms.min_ms,
+      row.decrypt_ms.max_ms,
       row.decrypt_ms.stddev_ms,
       row.total_ms.mean_ms,
       row.total_ms.median_ms,
+      row.total_ms.min_ms,
+      row.total_ms.max_ms,
       row.total_ms.stddev_ms,
-      row.throughput_mb_s,
+      row.encrypt_throughput_mib_s,
+      row.decrypt_throughput_mib_s,
+      row.total_throughput_mib_s,
       row.average_envelope_bytes,
+      row.average_overhead_bytes,
       row.overhead_percent
     ].map(csvEscape).join(','));
   }
@@ -140,10 +204,14 @@ function toCsv(aggregates) {
 }
 
 module.exports = {
+  MIB,
+  CSV_COLUMNS,
   mean,
   median,
   sampleStandardDeviation,
   applyStats,
+  throughputMibPerSecond,
+  round,
   summarize,
   toCsv,
   csvEscape
