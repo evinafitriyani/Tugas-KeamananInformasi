@@ -7,7 +7,6 @@ const { rc4 } = require('./rc4');
 const {
   ALGORITHMS,
   SALT_LENGTH,
-  MAC_KEY_LENGTH,
   algorithmConfig,
   deriveEncryptionKey,
   deriveMacKey
@@ -18,6 +17,7 @@ const ENVELOPE_VERSION = 1;
 const KDF = 'HKDF-SHA256';
 const HMAC_ALGORITHM = 'sha256';
 const HMAC_LENGTH = 32;
+const MAX_ENVELOPE_BYTES = 40 * 1024 * 1024;
 const SHA256_HEX_RE = /^[a-f0-9]{64}$/;
 const BASE64_RE = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
@@ -77,6 +77,11 @@ function cipherFor(algorithm, type, input, key, iv) {
 }
 
 function macPayload(payload) {
+  // Canonical MAC input: UTF-8 canonical JSON of every envelope field except
+  // `hmac`, with object keys sorted lexicographically at every level. Because
+  // the parser accepts only the exact known field set, this deterministically
+  // authenticates version, algorithm, mode, kdf, salt, iv, ciphertext,
+  // plaintext_sha256, and plaintext_size.
   const copy = {};
   for (const key of Object.keys(payload)) {
     if (key !== 'hmac') copy[key] = payload[key];
@@ -120,11 +125,25 @@ function encrypt(plaintext, algorithm, masterKey) {
   return Buffer.from(JSON.stringify(envelope), 'utf8');
 }
 
-function parseEnvelope(input) {
+function parseEnvelope(input, options = {}) {
+  const maxBytes = options.maxBytes || MAX_ENVELOPE_BYTES;
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
+    throw new TypeError('Batas envelope tidak valid.');
+  }
+
+  let raw;
+  try {
+    raw = Buffer.isBuffer(input) ? input : Buffer.from(String(input), 'utf8');
+  } catch {
+    throw new IntegrityError('Envelope tidak dapat dibaca.');
+  }
+  if (raw.length > maxBytes) {
+    throw new IntegrityError('Envelope melebihi ukuran maksimum.');
+  }
+
   let parsed;
   try {
-    const text = Buffer.isBuffer(input) ? input.toString('utf8') : String(input);
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(raw.toString('utf8'));
   } catch {
     throw new IntegrityError('Envelope tidak dapat dibaca.');
   }
@@ -155,6 +174,9 @@ function parseEnvelope(input) {
   if (!Number.isSafeInteger(parsed.plaintext_size) || parsed.plaintext_size <= 0) {
     throw new IntegrityError('Ukuran plaintext pada envelope tidak valid.');
   }
+  if (parsed.plaintext_size > maxBytes) {
+    throw new IntegrityError('Ukuran plaintext pada envelope melebihi batas.');
+  }
   if (typeof parsed.plaintext_sha256 !== 'string' || !SHA256_HEX_RE.test(parsed.plaintext_sha256)) {
     throw new IntegrityError('Hash plaintext pada envelope tidak valid.');
   }
@@ -184,7 +206,7 @@ function parseEnvelope(input) {
 }
 
 function verifyAndDecrypt(input, masterKey, expected = {}) {
-  const { parsed, salt, iv, ciphertext, hmac, config } = parseEnvelope(input);
+  const { parsed, salt, iv, ciphertext, hmac } = parseEnvelope(input);
 
   const macKey = deriveMacKey(masterKey, parsed.algorithm, salt);
   const expectedMac = computeMac(macKey, parsed);
@@ -242,6 +264,9 @@ function envelopeInfo(input) {
 module.exports = {
   ENVELOPE_VERSION,
   KDF,
+  HMAC_ALGORITHM,
+  HMAC_LENGTH,
+  MAX_ENVELOPE_BYTES,
   ALGORITHMS,
   canonicalize,
   computeMac,
